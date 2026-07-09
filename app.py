@@ -7,6 +7,7 @@ app = Flask(__name__)
 # Routes                                                              #
 # ------------------------------------------------------------------ #
 
+
 @app.route("/")
 def landing():
     return render_template("landing.html")
@@ -22,9 +23,15 @@ def login():
     return render_template("login.html")
 
 
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
+
 
 @app.route("/logout")
 def logout():

@@ -369,6 +369,62 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* ------------------------------------------------------------------ */
+/* Terms section                                                       */
+/* ------------------------------------------------------------------ */
+
+.terms {
+    background: var(--paper);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 5rem 2rem;
+}
+
+.terms-inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.terms h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--ink);
+    margin-bottom: 2.5rem;
+}
+
+.terms h2 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--ink);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.terms p {
+    font-size: 1rem;
+    color: var(--ink);
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+}
+
+.terms a {
+    color: var(--accent);
+    word-break: break-all;
+}
+
+.terms a:hover {
+    text-decoration: underline;
+}
+
+.terms .terms-footer {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-soft);
+}
+
+/* ------------------------------------------------------------------ */
 /* Auth pages                                                          */
 /* ------------------------------------------------------------------ */
 
