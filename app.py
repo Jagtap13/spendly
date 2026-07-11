@@ -1,6 +1,14 @@
 from flask import Flask, render_template
 
+from database.db import get_db, init_db, seed_db
+
 app = Flask(__name__)
+
+# Ensure the data layer is ready before any route is hit (spec §6).
+# init_db() is idempotent; seed_db() short-circuits when users already exist.
+with app.app_context():
+    init_db()
+    seed_db()
 
 
 # ------------------------------------------------------------------ #
