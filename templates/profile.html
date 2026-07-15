@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Spendly{% endblock %}
+
+{% block content %}
+<section class="profile-section">
+    <div class="profile-container">
+        <!-- User Info Card -->
+        <div class="user-info-card">
+            <div class="user-avatar">
+                <span class="user-initials">{{ user.initials }}</span>
+            </div>
+            <div class="user-details">
+                <h2 class="user-name">{{ user.name }}</h2>
+                <p class="user-email">{{ user.email }}</p>
+                <p class="user-member-since">Member since: {{ user.member_since }}</p>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="summary-stats">
+            {% for stat in stats %}
+            <div class="stat-card">
+                <h3 class="stat-label">{{ stat.label }}</h3>
+                <p class="stat-value">{{ stat.value }}</p>
+                {% if stat.meta %}
+                <p class="stat-meta">{{ stat.meta }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Transaction History -->
+        <div class="transaction-history">
+            <h2 class="section-title">Recent Transactions</h2>
+            <table class="transactions-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction.date }}</td>
+                        <td>{{ transaction.description }}</td>
+                        <td>
+                            {% if transaction.category == 'Groceries' %}
+                            <span class="category-badge category-badge-groceries">{{ transaction.category }}</span>
+                            {% elif transaction.category == 'Transport' %}
+                            <span class="category-badge category-badge-transport">{{ transaction.category }}</span>
+                            {% elif transaction.category == 'Dining' %}
+                            <span class="category-badge category-badge-dining">{{ transaction.category }}</span>
+                            {% elif transaction.category == 'Income' %}
+                            <span class="category-badge category-badge-income">{{ transaction.category }}</span>
+                            {% else %}
+                            <span class="category-badge">{{ transaction.category }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="amount {% if transaction.amount.startswith('-') %}negative{% else %}positive{% endif %}">
+                            {{ transaction.amount }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="category-breakdown">
+            <h2 class="section-title">Category</h2>
+            <ul class="category-list">
+                {% for category in categories %}
+                <li class="category-item">
+                    <span class="category-name">{{ category.category }}</span>
+                    <span class="category-amount">{{ category.total }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>
+{% endblock %}
