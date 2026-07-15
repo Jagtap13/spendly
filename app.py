@@ -125,9 +125,9 @@ def register():
         finally:
             conn.close()
 
-        # Log the user in immediately, then POST/Redirect/GET to the landing page.
+        # Log the user in immediately, then POST/Redirect/GET to the profile page.
         session["user_id"] = user_id
-        return redirect(url_for("landing"))
+        return redirect(url_for("profile"))
 
     # GET — just render the form.
     return render_template("register.html")
@@ -178,6 +178,9 @@ def login():
 
         # Authenticated — mark the session and POST/Redirect/GET to a safe target.
         session["user_id"] = user["id"]
+        # If no next target provided, default to profile page
+        if not next_target:
+            next_target = url_for("profile")
         return redirect(_safe_next(next_target))
 
     # GET — render the form, preserving ?next= so it survives re-render.
@@ -210,7 +213,83 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    # Check if user is logged in
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    # Get user info from database (in a real app, we would query the DB)
+    # For this step, we're using hardcoded data as specified in the spec
+    user_data = {
+        "name": "Aditya Jagtap",
+        "email": "nitish@example.com",
+        "member_since": "Jan 2023"
+    }
+
+    # Add initials to user data (first letters of first and last name)
+    name_parts = user_data["name"].split()
+    if len(name_parts) >= 2:
+        user_data["initials"] = (name_parts[0][0] + name_parts[-1][0]).upper()
+    else:
+        user_data["initials"] = user_data["name"][0:2].upper() if len(user_data["name"]) >= 2 else "?"
+
+    stats = [
+        {
+            "label": "Total Spent",
+            "value": "₹18,240",
+            "meta": "+12% vs last"
+        },
+        {
+            "label": "Transactions",
+            "value": "42",
+            "meta": "this month"
+        },
+        {
+            "label": "Budget Left",
+            "value": "₹6,760",
+            "meta": "43% remaining"
+        }
+    ]
+
+    transactions = [
+        {
+            "date": "Jan 15",
+            "description": "Grocery Store",
+            "category": "Groceries",
+            "amount": "-₹1,240.50"
+        },
+        {
+            "date": "Jan 12",
+            "description": "Uber Ride",
+            "category": "Transport",
+            "amount": "-₹345.00"
+        },
+        {
+            "date": "Jan 10",
+            "description": "Salary Credit",
+            "category": "Income",
+            "amount": "+₹45,000.00"
+        },
+        {
+            "date": "Jan 8",
+            "description": "Restaurant",
+            "category": "Dining",
+            "amount": "-₹890.25"
+        }
+    ]
+
+    categories = [
+        {"category": "Groceries", "total": "₹4,200"},
+        {"category": "Transport", "total": "₹1,850"},
+        {"category": "Dining", "total": "₹2,100"},
+        {"category": "Entertainment", "total": "₹950"},
+        {"category": "Utilities", "total": "₹1,300"}
+    ]
+
+    return render_template("profile.html",
+                         user=user_data,
+                         stats=stats,
+                         transactions=transactions,
+                         categories=categories)
 
 
 @app.route("/expenses/add")

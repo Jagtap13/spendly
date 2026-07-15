@@ -18,6 +18,12 @@
     --danger-light: #fdecea;
     --border: #e4e1da;
     --border-soft: #eeebe4;
+    --accent-green: #2f7d52;
+    --accent-green-light: #e6f4ec;
+    --accent-blue: #4a7ec2;
+    --accent-blue-light: #e6f4ec;
+    --accent-4: #f0e6f2;
+    --accent-4-light: #e6f4ec;
 
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', system-ui, sans-serif;
@@ -730,4 +736,215 @@ a { color: inherit; text-decoration: none; }
     height: 100%;
     border: 0;
     display: block;
+}
+
+/* Profile Page Styles */
+.profile-section {
+    padding: 4rem 2rem;
+    max-width: var(--max-width);
+    margin: 0 auto;
+}
+
+.profile-container {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 2.5rem;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+
+.user-info-card {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.user-avatar {
+    width: 60px;
+    height: 60px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.user-initials {
+    color: var(--paper);
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.user-details {
+    flex-grow: 1;
+}
+
+.user-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: var(--ink);
+}
+
+.user-email {
+    color: var(--ink-muted);
+    font-size: 1rem;
+    margin: 0 0 0.25rem 0;
+}
+
+.user-member-since {
+    color: var(--ink-faint);
+    font-size: 0.875rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.stat-card {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: var(--ink-muted);
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 0.25rem 0;
+    font-family: var(--font-body);
+}
+
+.stat-meta {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.transaction-history {
+    margin: 2rem 0;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 1rem 0;
+    font-family: var(--font-display);
+}
+
+.transactions-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.transactions-table th,
+.transactions-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.transactions-table th {
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.transactions-table td {
+    font-size: 0.875rem;
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Category badge colors using CSS variables */
+.category-badge-groceries {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.category-badge-transport {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.category-badge-dining {
+    background: var(--accent-2-light);
+    color: var(--accent-2);
+}
+
+.category-badge-entertainment {
+    background: var(--accent-4);
+    color: var(--accent-blue);
+}
+
+.category-badge-utilities {
+    background: var(--accent-green-light);
+    color: var(--accent-green);
+}
+
+.category-badge-income {
+    background: var(--accent-green-light);
+    color: var(--accent-green);
+}
+
+.amount.positive {
+    color: var(--accent);
+}
+
+.amount.negative {
+    color: var(--danger);
+}
+
+.category-breakdown {
+    margin: 2rem 0;
+}
+
+.category-list {
+    list-style: none;
+    padding: 0;
+}
+
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.category-item:last-child {
+    border-bottom: none;
+}
+
+.category-name {
+    font-weight: 500;
+    color: var(--ink);
+}
+
+.category-amount {
+    font-weight: 600;
+    color: var(--ink);
 }
