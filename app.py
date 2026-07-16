@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from urllib.parse import urlparse
 
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -47,6 +48,39 @@ def _safe_next(target):
     if not target.startswith("/"):
         return url_for("landing")
     return target
+
+
+def _format_iso_to_mon_dd(iso_str):
+    """Convert an ISO 'YYYY-MM-DD' date string to a 'Mon DD' label.
+
+    The profile template renders `transaction.date` as a short human label
+    (e.g. 'Jan 15'). The DB stores dates as ISO strings, so we parse them
+    here and reformat. Returns the original string on parse failure so a
+    bad row never crashes the profile page.
+    """
+    if not iso_str:
+        return ""
+    try:
+        return datetime.strptime(iso_str, "%Y-%m-%d").strftime("%b %d")
+    except (TypeError, ValueError):
+        return iso_str
+
+
+def _format_iso_month_year(iso_str):
+    """Convert an ISO datetime string to a 'Mon YYYY' label (e.g. 'Jan 2023').
+
+    users.created_at is stored as 'YYYY-MM-DD HH:MM:SS' (datetime('now')).
+    Returns the original string on parse failure.
+    """
+    if not iso_str:
+        return ""
+    # Try the full datetime form first; fall back to date-only.
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(iso_str, fmt).strftime("%b %Y")
+        except (TypeError, ValueError):
+            continue
+    return iso_str
 
 
 @app.context_processor
@@ -217,73 +251,114 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    # Get user info from database (in a real app, we would query the DB)
-    # For this step, we're using hardcoded data as specified in the spec
-    user_data = {
-        "name": "Aditya Jagtap",
-        "email": "nitish@example.com",
-        "member_since": "Jan 2023"
-    }
+    user_id = session["user_id"]
+    conn = get_db()
+    try:
+        # User info card — read name, email, and member_since from the DB.
+        # Stale-session safety: if the user row was deleted out from under
+        # the session, clear the session and bounce to /login.
+        user_row = conn.execute(
+            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if user_row is None:
+            session.clear()
+            return redirect(url_for("login"))
 
-    # Add initials to user data (first letters of first and last name)
-    name_parts = user_data["name"].split()
-    if len(name_parts) >= 2:
-        user_data["initials"] = (name_parts[0][0] + name_parts[-1][0]).upper()
-    else:
-        user_data["initials"] = user_data["name"][0:2].upper() if len(user_data["name"]) >= 2 else "?"
+        # Derive initials from the user's name (first letter of first word +
+        # first letter of last word; fall back to first two letters if a
+        # single-word name, and to "?" if the name is too short).
+        name_parts = user_row["name"].split()
+        if len(name_parts) >= 2:
+            initials = (name_parts[0][0] + name_parts[-1][0]).upper()
+        else:
+            initials = user_row["name"][0:2].upper() if len(user_row["name"]) >= 2 else "?"
 
-    stats = [
-        {
-            "label": "Total Spent",
-            "value": "₹18,240",
-            "meta": "+12% vs last"
-        },
-        {
-            "label": "Transactions",
-            "value": "42",
-            "meta": "this month"
-        },
-        {
-            "label": "Budget Left",
-            "value": "₹6,760",
-            "meta": "43% remaining"
+        # Format member_since as "Mon YYYY" (e.g. "Jan 2023") from the
+        # ISO timestamp stored in users.created_at.
+        member_since = _format_iso_month_year(user_row["created_at"])
+
+        user_data = {
+            "name": user_row["name"],
+            "email": user_row["email"],
+            "member_since": member_since,
+            "initials": initials,
         }
-    ]
 
-    transactions = [
-        {
-            "date": "Jan 15",
-            "description": "Grocery Store",
-            "category": "Groceries",
-            "amount": "-₹1,240.50"
-        },
-        {
-            "date": "Jan 12",
-            "description": "Uber Ride",
-            "category": "Transport",
-            "amount": "-₹345.00"
-        },
-        {
-            "date": "Jan 10",
-            "description": "Salary Credit",
-            "category": "Income",
-            "amount": "+₹45,000.00"
-        },
-        {
-            "date": "Jan 8",
-            "description": "Restaurant",
-            "category": "Dining",
-            "amount": "-₹890.25"
-        }
-    ]
+        # Summary stats — derived from the expenses table for the current user.
+        # Read-only SELECTs, so no commit is required.
+        total_row = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        total = total_row["total"]
 
-    categories = [
-        {"category": "Groceries", "total": "₹4,200"},
-        {"category": "Transport", "total": "₹1,850"},
-        {"category": "Dining", "total": "₹2,100"},
-        {"category": "Entertainment", "total": "₹950"},
-        {"category": "Utilities", "total": "₹1,300"}
-    ]
+        count_row = conn.execute(
+            "SELECT COUNT(*) AS n FROM expenses WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+        txn_count = count_row["n"]
+
+        stats = [
+            {
+                "label": "Total Spent",
+                "value": f"₹{total:,.0f}",
+                "meta": "",  # "+12% vs last" is out of scope for this step
+            },
+            {
+                "label": "Transactions",
+                "value": str(txn_count),
+                "meta": "this month",  # static label; matches the original copy
+            },
+            {
+                "label": "Budget Left",
+                "value": "—",  # em-dash; budgets feature not yet implemented
+                "meta": "",
+            },
+        ]
+
+        # Recent transactions for this user — most recent first, capped at 10.
+        # All rows in the expenses table are outflows, so amount is always
+        # rendered with a leading minus sign (no positive/Income case).
+        txn_rows = conn.execute(
+            """
+            SELECT date, description, category, amount
+            FROM expenses
+            WHERE user_id = ?
+            ORDER BY date DESC, id DESC
+            LIMIT 10
+            """,
+            (user_id,),
+        ).fetchall()
+        transactions = [
+            {
+                "date":        _format_iso_to_mon_dd(row["date"]),
+                "description": row["description"] or "",
+                "category":    row["category"],
+                "amount":      f"-₹{row['amount']:,.2f}",
+            }
+            for row in txn_rows
+        ]
+
+        # Category breakdown — sum per category, ordered by total desc.
+        # Only categories with at least one expense are included; a user
+        # with 0 expenses gets an empty list.
+        cat_rows = conn.execute(
+            """
+            SELECT category, SUM(amount) AS total
+            FROM expenses
+            WHERE user_id = ?
+            GROUP BY category
+            ORDER BY total DESC
+            """,
+            (user_id,),
+        ).fetchall()
+        categories = [
+            {"category": row["category"], "total": f"₹{row['total']:,.0f}"}
+            for row in cat_rows
+        ]
+    finally:
+        conn.close()
 
     return render_template("profile.html",
                          user=user_data,
