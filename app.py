@@ -83,6 +83,40 @@ def _format_iso_month_year(iso_str):
     return iso_str
 
 
+def _parse_iso_date(value):
+    """Parse a 'YYYY-MM-DD' string to a datetime.date, or None on any failure.
+
+    Lenient: None, empty string, or anything that doesn't strptime cleanly
+    is treated as absent (returns None, never raises). Mirrors the
+    safety-first pattern of _format_iso_to_mon_dd / _format_iso_month_year
+    so a bad query-string value cannot 500 the profile page.
+    """
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _format_iso_long(iso_str):
+    """Format a 'YYYY-MM-DD' string as 'Mon D, YYYY' (e.g. 'Jan 1, 2026').
+
+    Cross-platform: avoids the POSIX-only `%-d` directive that raises on
+    Windows; we strip a leading zero post-format. Returns the original
+    string on parse failure.
+    """
+    if not iso_str:
+        return ""
+    try:
+        d = datetime.strptime(iso_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return iso_str
+    # "%b %d, %Y" pads single-digit days to "Jan 01, 2026"; we trim the
+    # leading zero so the badge reads "Jan 1, 2026" on every platform.
+    return d.strftime("%b %d, %Y").replace(" 0", " ")
+
+
 @app.context_processor
 def inject_current_user():
     """Expose the logged-in user (or None) to every template.
@@ -251,6 +285,32 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
+    # --- Date filter (Step 6) -----------------------------------------
+    # Read the optional ?from= / ?to= query params. Both are validated
+    # leniently via _parse_iso_date — unparseable input is treated as
+    # absent so a bad URL never 500s the page. If both bounds are
+    # present and the lower bound is later than the upper, swap them
+    # so the resulting BETWEEN clause is well-formed.
+    from_date = _parse_iso_date(request.args.get("from"))
+    to_date = _parse_iso_date(request.args.get("to"))
+    if from_date and to_date and from_date > to_date:
+        from_date, to_date = to_date, from_date
+
+    # Build a single parameterized WHERE fragment + params tuple. The
+    # fragment is one of four STATIC string literals — user input flows
+    # only through the ? placeholders. This block is then appended
+    # identically to all four expense queries so they cannot drift.
+    date_clause, date_params = "", ()
+    if from_date and to_date:
+        date_clause = " AND date BETWEEN ? AND ?"
+        date_params = (from_date.isoformat(), to_date.isoformat())
+    elif from_date:
+        date_clause = " AND date >= ?"
+        date_params = (from_date.isoformat(),)
+    elif to_date:
+        date_clause = " AND date <= ?"
+        date_params = (to_date.isoformat(),)
+
     user_id = session["user_id"]
     conn = get_db()
     try:
@@ -286,16 +346,18 @@ def profile():
         }
 
         # Summary stats — derived from the expenses table for the current user.
-        # Read-only SELECTs, so no commit is required.
+        # Read-only SELECTs, so no commit is required. The date_clause is
+        # appended to the WHERE so stats reflect the active filter.
         total_row = conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) AS total FROM expenses WHERE user_id = ?",
-            (user_id,),
+            f"SELECT COALESCE(SUM(amount), 0) AS total "
+            f"FROM expenses WHERE user_id = ?{date_clause}",
+            (user_id, *date_params),
         ).fetchone()
         total = total_row["total"]
 
         count_row = conn.execute(
-            "SELECT COUNT(*) AS n FROM expenses WHERE user_id = ?",
-            (user_id,),
+            f"SELECT COUNT(*) AS n FROM expenses WHERE user_id = ?{date_clause}",
+            (user_id, *date_params),
         ).fetchone()
         txn_count = count_row["n"]
 
@@ -321,14 +383,14 @@ def profile():
         # All rows in the expenses table are outflows, so amount is always
         # rendered with a leading minus sign (no positive/Income case).
         txn_rows = conn.execute(
-            """
+            f"""
             SELECT date, description, category, amount
             FROM expenses
-            WHERE user_id = ?
+            WHERE user_id = ?{date_clause}
             ORDER BY date DESC, id DESC
             LIMIT 10
             """,
-            (user_id,),
+            (user_id, *date_params),
         ).fetchall()
         transactions = [
             {
@@ -342,16 +404,17 @@ def profile():
 
         # Category breakdown — sum per category, ordered by total desc.
         # Only categories with at least one expense are included; a user
-        # with 0 expenses gets an empty list.
+        # with 0 expenses (or 0 expenses in the filter window) gets an
+        # empty list. Empty state is rendered cleanly by the template.
         cat_rows = conn.execute(
-            """
+            f"""
             SELECT category, SUM(amount) AS total
             FROM expenses
-            WHERE user_id = ?
+            WHERE user_id = ?{date_clause}
             GROUP BY category
             ORDER BY total DESC
             """,
-            (user_id,),
+            (user_id, *date_params),
         ).fetchall()
         categories = [
             {"category": row["category"], "total": f"₹{row['total']:,.0f}"}
@@ -360,11 +423,37 @@ def profile():
     finally:
         conn.close()
 
+    # Template context for the date-filter bar. from_value / to_value
+    # echo back the validated (and possibly swapped) ISO bounds so the
+    # inputs pre-fill on reload. filter_active gates the "Active filter"
+    # badge. filter_label is the human-readable range, or "" when no
+    # filter is active (the template's {% if filter_active %} then
+    # suppresses the badge entirely).
+    from_value = from_date.isoformat() if from_date else ""
+    to_value = to_date.isoformat() if to_date else ""
+    filter_active = bool(from_date or to_date)
+    if filter_active:
+        if from_date and to_date:
+            filter_label = (
+                f"{_format_iso_long(from_date.isoformat())} – "
+                f"{_format_iso_long(to_date.isoformat())}"
+            )
+        elif from_date:
+            filter_label = f"From {_format_iso_long(from_date.isoformat())}"
+        else:
+            filter_label = f"Through {_format_iso_long(to_date.isoformat())}"
+    else:
+        filter_label = ""
+
     return render_template("profile.html",
                          user=user_data,
                          stats=stats,
                          transactions=transactions,
-                         categories=categories)
+                         categories=categories,
+                         from_value=from_value,
+                         to_value=to_value,
+                         filter_active=filter_active,
+                         filter_label=filter_label)
 
 
 @app.route("/expenses/add")
