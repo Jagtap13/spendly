@@ -5,6 +5,36 @@
 {% block content %}
 <section class="profile-section">
     <div class="profile-container">
+        <!-- Date filter bar (Step 6). Submits via plain HTML GET so the
+             URL stays shareable / bookmarkable and the back button works. -->
+        <form class="date-filter-bar" method="get" action="{{ url_for('profile') }}">
+            <div class="date-filter-field">
+                <label for="from">From</label>
+                <input class="date-filter-input"
+                       type="date"
+                       id="from"
+                       name="from"
+                       value="{{ from_value }}">
+            </div>
+            <div class="date-filter-field">
+                <label for="to">To</label>
+                <input class="date-filter-input"
+                       type="date"
+                       id="to"
+                       name="to"
+                       value="{{ to_value }}">
+            </div>
+            <div class="date-filter-actions">
+                <button type="submit" class="btn-apply">Apply</button>
+                <a class="all-time-link" href="{{ url_for('profile') }}">All time</a>
+            </div>
+            {% if filter_active %}
+            <div class="active-filter-badge" role="status" aria-live="polite">
+                Active filter: {{ filter_label }}
+            </div>
+            {% endif %}
+        </form>
+
         <!-- User Info Card -->
         <div class="user-info-card">
             <div class="user-avatar">
