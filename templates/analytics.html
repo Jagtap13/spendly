@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — Spendly{% endblock %}
+
+{% block content %}
+<section class="coming-soon-section">
+    <!-- Decorative soft circles behind the card (matches the wireframe). -->
+    <span class="coming-soon-blob coming-soon-blob-top" aria-hidden="true"></span>
+    <span class="coming-soon-blob coming-soon-blob-bottom" aria-hidden="true"></span>
+
+    <div class="coming-soon-card">
+        <div class="coming-soon-icon" aria-hidden="true">
+            <!-- Clock icon, white stroke on the dark-green tile. -->
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+
+        <span class="coming-soon-badge">COMING SOON</span>
+
+        <h1 class="coming-soon-title">Advanced Analytics</h1>
+
+        <p class="coming-soon-subtitle">
+            We're working on powerful insights and visualizations
+            to help you understand your spending patterns better.
+        </p>
+
+        <div class="coming-soon-dots" aria-hidden="true">
+            <span class="coming-soon-dot"></span>
+            <span class="coming-soon-dot"></span>
+            <span class="coming-soon-dot"></span>
+        </div>
+
+        <p class="coming-soon-foot">We're crafting something special</p>
+
+        <a href="{{ url_for('profile') }}" class="coming-soon-cta">Back to profile</a>
+    </div>
+</section>
+{% endblock %}
